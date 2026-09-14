@@ -2,26 +2,27 @@ name: Native Windows client
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'desktop/**'
-      - '.github/workflows/windows-desktop.yml'
-    tags:
-      - 'v*'
-  pull_request:
-    paths:
-      - 'desktop/**'
-      - '.github/workflows/windows-desktop.yml'
 
 jobs:
   build-windows:
     runs-on: windows-2022
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install vcpkg dependencies for TDLib
+
+      - name: Install gperf for TDLib
+        shell: pwsh
+        run: |
+          choco install gperf --yes --no-progress
+          $gperf = Get-ChildItem -Path 'C:\ProgramData\chocolatey' -Filter 'gperf.exe' -Recurse | Select-Object -First 1
+          if ($null -eq $gperf) { throw 'gperf.exe was not found' }
+          "GPERF_EXECUTABLE=$($gperf.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install vcpkg dependencies
         shell: pwsh
         run: vcpkg install openssl:x64-windows zlib:x64-windows
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -31,21 +32,27 @@ jobs:
           arch: win64_msvc2022_64
           modules: 'qtmultimedia'
           cache: true
+
       - name: Configure
         shell: pwsh
-        run: >-
-          cmake -S desktop -B desktop/build -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
-          -DNIMARKOGRAM_FETCH_TDLIB=ON
+        run: |
+          cmake -S desktop -B desktop/build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+            -DNIMARKOGRAM_FETCH_TDLIB=ON `
+            "-DGPERF_EXECUTABLE=$env:GPERF_EXECUTABLE"
+
       - name: Build
         run: cmake --build desktop/build --config Release --parallel
+
       - name: Deploy Qt runtime
         shell: pwsh
         run: windeployqt --release desktop/build/NimarkoGram.exe
+
       - name: Create portable archive
         shell: pwsh
         run: Compress-Archive -Path desktop/build/* -DestinationPath NimarkoGram-windows-portable.zip -Force
+
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
