@@ -1,0 +1,40 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-release",
+      "displayName": "NimarkoGram Windows Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "NIMARKOGRAM_FETCH_TDLIB": "ON"
+      }
+    },
+    {
+      "name": "windows-skeleton",
+      "displayName": "NimarkoGram Windows Skeleton",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-skeleton",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "NIMARKOGRAM_FETCH_TDLIB": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-release"
+    },
+    {
+      "name": "windows-skeleton",
+      "configurePreset": "windows-skeleton"
+    }
+  ]
+}
