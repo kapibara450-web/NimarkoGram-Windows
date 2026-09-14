@@ -1,0 +1,53 @@
+name: Native Windows client
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/windows-desktop.yml'
+    tags:
+      - 'v*'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/windows-desktop.yml'
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install vcpkg dependencies for TDLib
+        shell: pwsh
+        run: vcpkg install openssl:x64-windows zlib:x64-windows
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: 'qtmultimedia'
+          cache: true
+      - name: Configure
+        shell: pwsh
+        run: >-
+          cmake -S desktop -B desktop/build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DNIMARKOGRAM_FETCH_TDLIB=ON
+      - name: Build
+        run: cmake --build desktop/build --config Release --parallel
+      - name: Deploy Qt runtime
+        shell: pwsh
+        run: windeployqt --release desktop/build/NimarkoGram.exe
+      - name: Create portable archive
+        shell: pwsh
+        run: Compress-Archive -Path desktop/build/* -DestinationPath NimarkoGram-windows-portable.zip -Force
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NimarkoGram-windows-portable
+          path: NimarkoGram-windows-portable.zip
